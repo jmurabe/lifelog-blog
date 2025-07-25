@@ -1,0 +1,15 @@
+baseURL = 'https://jmurabe.github.io/lifelog-blog/'
+languageCode = 'ja-jp'
+title = 'My LifeLog'
+theme = "PaperMod"
+
+[params]
+  author = "murave"
+  ShowReadingTime = true
+  ShowToc = true
+
+[menu]
+[[menu.main]]
+  name = "Home"
+  url = "/"
+  weight = 1
