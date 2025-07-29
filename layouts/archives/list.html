@@ -1,0 +1,22 @@
+{{ define "main" }}
+  <h1>{{ .Title }}</h1>
+
+  {{ $pages := where site.RegularPages "Section" "posts" }}
+  {{ $grouped := dict }}
+
+  {{ range $pages }}
+    {{ $yearMonth := .Date.Format "2006-01" }}
+    {{ $existing := index $grouped $yearMonth | default (slice) }}
+    {{ $grouped = merge $grouped (dict $yearMonth (append $existing .)) }}
+  {{ end }}
+
+  {{ range $key, $val := sort $grouped "desc" }}
+    <h2>{{ (time (printf "%s-01" $key)).Format "2006年01月" }}</h2>
+    <ul>
+      {{ range $val }}
+        <li><a href="{{ .RelPermalink }}">{{ .Title }}</a>（{{ .Date.Format "01月02日" }}）</li>
+      {{ end }}
+    </ul>
+  {{ end }}
+
+{{ end }}

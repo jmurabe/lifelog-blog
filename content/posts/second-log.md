@@ -2,8 +2,11 @@
 date = '2025-07-25T16:45:49+09:00'
 draft = false
 title = 'Second Log'
-tags = ["サンプル"]
 categories = ["テスト投稿"]
+tags = ["サンプル","地図"]
+images = []
+latitude = 32.823420237719475
+longitude = 129.84850850369196
 +++
 
-記事の追加テストです。
+地図のテストです。

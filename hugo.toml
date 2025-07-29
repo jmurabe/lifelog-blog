@@ -1,18 +1,25 @@
 baseURL = 'https://jmurabe.github.io/lifelog-blog/'
 languageCode = 'ja-jp'
-title = 'My LifeLog'
+title = 'murave LifeLog'
 theme = "PaperMod"
+pagination.pagerSize = 5
 
 [params]
   author = "murave"
   ShowReadingTime = true
   ShowToc = true
+  dateFormat = "2006-01-02(Mon)"
 
 [menu]
 [[menu.main]]
   name = "Home"
   url = "/"
   weight = 1
+[[menu.main]]
+  identifier = "archives"
+  name = "Archives"
+  url = "/archives/"
+  weight = 5
 [[menu.main]]
   identifier = "categories"
   name = "Categories"
