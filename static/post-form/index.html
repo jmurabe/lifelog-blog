@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LifeLog 投稿フォーム</title>
+
+  <!-- EasyMDE -->
+  <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css" />
+  <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+
+  <!-- Google Sign-In -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    body { max-width: 900px; margin: 1.5rem auto; font-family: system-ui, "Helvetica Neue", Arial, sans-serif; padding: 0 1rem; }
+    label { display:block; margin-top: 0.75rem; font-weight: 600; }
+    input[type="text"], input[type="date"], select { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+    .meta-row { display:flex; gap:1rem; align-items:center; }
+    .meta-row > * { flex:1; }
+    .small { max-width: 200px; }
+    .info { color:#666; font-size:0.9rem; margin-top:0.5rem; }
+    #signin-button { margin-bottom: 1rem; }
+    .btn { display:inline-block; padding:0.6rem 1rem; background:#0066cc; color:#fff; border-radius:6px; border:0; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <h1>ライフログ投稿</h1>
+
+  <div id="signin-button"></div>
+
+  <form id="postForm" style="display:none;">
+    <label>タイトル
+      <input type="text" name="title" id="title" required />
+    </label>
+
+    <div class="meta-row">
+      <div>
+        <label>日時
+          <input type="datetime-local" id="datetime" name="datetime" />
+        </label>
+      </div>
+      <div class="small">
+        <label>カテゴリ
+          <select id="category" name="category" required>
+            <option value="">選択してください</option>
+            <option value="雑記">雑記</option>
+            <option value="食事">食事</option>
+            <option value="旅行">旅行</option>
+            <option value="トレーニング">トレーニング</option>
+            <option value="テスト投稿">テスト投稿</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <label>タグ（カンマ区切り）
+      <input type="text" id="tags" name="tags" placeholder="例: 写真,旅行" />
+    </label>
+
+    <div class="meta-row">
+      <div>
+        <label>緯度
+          <input type="number" step="0.000001" id="latitude" placeholder="例: 35.681236" />
+        </label>
+      </div>
+      <div>
+        <label>経度
+          <input type="number" step="0.000001" id="longitude" placeholder="例: 139.767125" />
+        </label>
+      </div>
+      <div>
+        <button type="button" id="get-location">現在地を取得</button>
+      </div>
+    </div>
+
+    <label>本文（Markdown）</label>
+    <textarea id="editor"></textarea>
+    <div class="info">ドラッグ＆ドロップ、貼り付け、または下のファイル選択で画像を挿入できます（最大5枚）。画像は自動で縮小され Markdown に Base64 埋め込みされます。</div>
+
+    <label style="margin-top:0.6rem;">ファイル選択（画像を明示的に選ぶ場合）
+      <input type="file" id="fileInput" accept="image/*" multiple />
+    </label>
+    
+    <div style="margin-top:1rem;">
+      <button id="submitBtn" class="btn" type="button">投稿する</button>
+    </div>
+  </form>
+
+  <script>
+  // ====== 設定 ======
+  const GOOGLE_CLIENT_ID = '74582613623-tqplo82cjouc5qj37laup1mlonp8kfnr.apps.googleusercontent.com'; // <-- ここを置換
+  // const API_ENDPOINT = 'https://your-cloudflare-worker.example.com/api/submit'; // <-- ここを置換
+  const API_ENDPOINT = 'http://localhost:8787/api/post'; // <-- 開発用ローカル
+
+  const MAX_IMAGES = 5;
+  const MAX_WIDTH = 800; // 縮小幅（px）
+  const JPEG_QUALITY = 0.8;
+
+  // dateをdatetime-local用に日本のタイムゾーンでのyyyy-MM-ddThh:mmにする。
+  // 参考: https://qiita.com/takatama/items/f4aeebd8f9eb509e3cdd
+  function toLocalISOString(date) {
+    const localDate = new Date(date - date.getTimezoneOffset() * 60000);
+    localDate.setSeconds(null); // 秒部分を削除
+    localDate.setMilliseconds(null); // ミリ秒部分を削除
+    return localDate.toISOString().slice(0, -1);
+  }
+  // ====== EasyMDE 初期化 ======
+  const easymde = new EasyMDE({
+    element: document.getElementById('editor'),
+    spellChecker: false,
+    autofocus: true,
+    placeholder: "ここに本文をMarkdownで書きます。画像は貼り付けやドラッグで挿入できます。",
+    showIcons: ["image"],
+    toolbar: ["bold","italic","heading","|","quote","unordered-list","ordered-list","|","link","image","preview","guide"]
+  });
+
+  // 画像カウント管理
+  let imagesInserted = 0;
+
+  // ====== 画像リサイズ：File -> dataURL (jpeg) ======
+  function resizeFileToDataURL(file, maxWidth = MAX_WIDTH, quality = JPEG_QUALITY) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) {
+          const ratio = maxWidth / width;
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        // JPEGで出す（PNGも直したい場合は mime を判定して分岐可能）
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.onerror = (e) => reject(e);
+      // URL.createObjectURL を使う（よりメモリ効率的）
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  // ====== paste イベントハンドラ（クリップボード貼り付け） ======
+  document.addEventListener('paste', async (e) => {
+    if (!e.clipboardData) return;
+    const items = e.clipboardData.items;
+    if (!items) return;
+    for (const it of items) {
+      if (imagesInserted >= MAX_IMAGES) break;
+      if (it.type && it.type.startsWith('image/')) {
+        const file = it.getAsFile();
+        if (file) {
+          try {
+            const dataUrl = await resizeFileToDataURL(file);
+            insertImageDataUrlToEditor(dataUrl, file.name);
+            imagesInserted++;
+          } catch (err) {
+            console.error('画像処理エラー', err);
+          }
+        }
+      }
+    }
+  });
+
+  // ====== ドラッグ＆ドロップ（エディタ領域） ======
+  const cmEl = easymde.codemirror.getWrapperElement();
+  cmEl.addEventListener('dragover', (e) => { e.preventDefault(); });
+  cmEl.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const files = Array.from(dt.files || []);
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+      if (imagesInserted >= MAX_IMAGES) break;
+      try {
+        const dataUrl = await resizeFileToDataURL(file);
+        insertImageDataUrlToEditor(dataUrl, file.name);
+        imagesInserted++;
+      } catch (err) {
+        console.error('drop image error', err);
+      }
+    }
+  });
+
+  // ====== ファイル選択からの挿入 ======
+  document.getElementById('fileInput').addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files || []);
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+      if (imagesInserted >= MAX_IMAGES) {
+        alert('画像は最大 ' + MAX_IMAGES + ' 枚までです');
+        break;
+      }
+      try {
+        const dataUrl = await resizeFileToDataURL(file);
+        insertImageDataUrlToEditor(dataUrl, file.name);
+        imagesInserted++;
+      } catch (err) {
+        console.error('file input error', err);
+      }
+    }
+    // フォームの input をクリアして再利用可能に
+    e.target.value = '';
+  });
+
+  // ====== エディタに挿入する関数 ======
+  function insertImageDataUrlToEditor(dataUrl, filename = 'image.jpg') {
+    const cm = easymde.codemirror;
+    const doc = cm.getDoc();
+    const cursor = doc.getCursor();
+    const alt = filename.replace(/\.[^/.]+$/, '');
+    const markdownImage = `![${alt}](${dataUrl})\n\n`;
+    doc.replaceRange(markdownImage, cursor);
+  }
+
+  document.getElementById('get-location').addEventListener('click', () => {
+  if (!navigator.geolocation) {
+      alert('このブラウザは位置情報取得に対応していません。');
+      return;
+  }
+  navigator.geolocation.getCurrentPosition(
+      (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      document.getElementById('latitude').value = lat.toFixed(6);
+      document.getElementById('longitude').value = lng.toFixed(6);
+      },
+      (err) => {
+      console.warn('位置情報取得失敗', err);
+      alert('位置情報の取得に失敗しました。ブラウザの設定をご確認ください。');
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+  );
+  });
+  // ====== Google Sign-In 初期化と UI 表示 ======
+  let idToken = null;
+  function handleCredentialResponse(response) {
+      idToken = response.credential;
+      // ログイン成功 → フォーム表示
+      document.getElementById('postForm').style.display = 'block';
+      document.getElementById('signin-button').style.display = 'none';
+  }
+
+  window.onload = () => {
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleCredentialResponse,
+      ux_mode: 'popup'
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('signin-button'),
+      { theme: 'outline', size: 'large' }
+    );
+    // 日時に今をセット
+    document.getElementById('datetime').value = toLocalISOString(new Date());
+  };
+
+  // ====== 送信処理 ======
+  document.getElementById('submitBtn').addEventListener('click', async () => {
+    // validate
+    const title = document.getElementById('title').value.trim();
+    const category = document.getElementById('category').value;
+    if (!title) { alert('タイトルを入力してください'); return; }
+    if (!category) { alert('カテゴリを選択してください'); return; }
+    if (!idToken) { alert('Googleにログインしてください'); return; }
+
+    // コンテンツ取得
+    const markdown = easymde.value();
+
+    // front matter 用値
+    const datetimeInput = document.getElementById('datetime').value;
+    const toJstIsoLocal = (datetimeStr) => {
+      // datetimeStr: "YYYY-MM-DDTHH:MM"
+      return `${datetimeStr}:00+09:00`;
+    }
+    const dateVal = datetimeInput 
+      ? toJstIsoLocal(datetimeInput)
+      : toJstIsoLocal(toLocalISOString(new Date()));    
+
+    const tagsRaw = document.getElementById('tags').value.trim();
+    const tags = tagsRaw ? tagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    // 経度緯度
+    const lat = (typeof document.getElementById('latitude').value === 'number') ? document.getElementById('latitude').value : null;
+    const lng = (typeof document.getElementById('longitude').value === 'number') ? document.getElementById('longitude').value : null;
+
+    // TOML front matter を作る（簡易）
+    const frontMatterLines = [
+      '+++',
+      `title = '${title.replace(/'/g,"\\'")}'`,
+      `date = '${dateVal}'`,
+      `tags = ${JSON.stringify(tags)}`,
+      `categories = [\"${category}\"]`,
+      (lat !== null ? `latitude = ${lat}` : ''),
+      (lng !== null ? `longitude = ${lng}` : ''),
+      'draft = false',
+      '+++',
+      '',
+    ].filter(Boolean).join('\n');
+
+    const fullContent = frontMatterLines + markdown;
+
+    const payload = {
+      title: title,
+      date: dateVal,
+      tags: tags,
+      categories: [category],
+      latitude: lat,
+      longitude: lng,
+      content: fullContent
+      // 画像はすでに Markdown に data:uri として埋め込まれているため別送しない
+    };
+
+    // POST
+    try {
+      const res = await fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + idToken
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        console.error('投稿エラー', res.status, txt);
+        alert('投稿に失敗しました: ' + res.status + '\\n' + txt);
+        return;
+      }
+      const j = await res.json();
+      alert('投稿完了');
+      // フォームをリセットしてエディタをクリア
+      document.getElementById('postForm').reset();
+      easymde.value('');
+      imagesInserted = 0;
+    } catch (err) {
+      console.error(err);
+      alert('通信エラーが発生しました');
+    }
+  });
+  </script>
+</body>
+</html>
