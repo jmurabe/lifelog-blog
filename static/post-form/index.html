@@ -87,15 +87,17 @@
     </div>
   </form>
 
+  <!-- 先に config.js を読み込む -->
+  <script src="config.js"></script>
   <script>
   // ====== 設定 ======
-  const GOOGLE_CLIENT_ID = '74582613623-tqplo82cjouc5qj37laup1mlonp8kfnr.apps.googleusercontent.com'; // <-- ここを置換
-  // const API_ENDPOINT = 'https://your-cloudflare-worker.example.com/api/submit'; // <-- ここを置換
-  const API_ENDPOINT = 'http://localhost:8787/api/post'; // <-- 開発用ローカル
-
-  const MAX_IMAGES = 5;
-  const MAX_WIDTH = 800; // 縮小幅（px）
-  const JPEG_QUALITY = 0.8;
+  const { GOOGLE_CLIENT_ID, API_ENDPOINT, MAX_IMAGES, MAX_WIDTH, JPEG_QUALITY } = window.LIFELOG_CONFIG;
+//   const GOOGLE_CLIENT_ID = '74582613623-tqplo82cjouc5qj37laup1mlonp8kfnr.apps.googleusercontent.com'; // <-- ここを置換
+//   // const API_ENDPOINT = 'https://your-cloudflare-worker.example.com/api/submit'; // <-- ここを置換
+//   const API_ENDPOINT = 'http://localhost:8787/api/post'; // <-- 開発用ローカル
+//   const MAX_IMAGES = 5;
+//   const MAX_WIDTH = 800; // 縮小幅（px）
+//   const JPEG_QUALITY = 0.8;
 
   // dateをdatetime-local用に日本のタイムゾーンでのyyyy-MM-ddThh:mmにする。
   // 参考: https://qiita.com/takatama/items/f4aeebd8f9eb509e3cdd
@@ -262,67 +264,79 @@
 
   // ====== 送信処理 ======
   document.getElementById('submitBtn').addEventListener('click', async () => {
-    // validate
-    const title = document.getElementById('title').value.trim();
-    const category = document.getElementById('category').value;
-    if (!title) { alert('タイトルを入力してください'); return; }
-    if (!category) { alert('カテゴリを選択してください'); return; }
-    if (!idToken) { alert('Googleにログインしてください'); return; }
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '投稿中...';
 
-    // コンテンツ取得
-    const markdown = easymde.value();
-
-    // front matter 用値
-    const datetimeInput = document.getElementById('datetime').value;
-    const toJstIsoLocal = (datetimeStr) => {
-      // datetimeStr: "YYYY-MM-DDTHH:MM"
-      return `${datetimeStr}:00+09:00`;
-    }
-    const dateVal = datetimeInput 
-      ? toJstIsoLocal(datetimeInput)
-      : toJstIsoLocal(toLocalISOString(new Date()));    
-
-    const tagsRaw = document.getElementById('tags').value.trim();
-    const tags = tagsRaw ? tagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
-
-    // 経度緯度
-    const lat = (typeof document.getElementById('latitude').value === 'number') ? document.getElementById('latitude').value : null;
-    const lng = (typeof document.getElementById('longitude').value === 'number') ? document.getElementById('longitude').value : null;
-
-    // TOML front matter を作る（簡易）
-    const frontMatterLines = [
-      '+++',
-      `title = '${title.replace(/'/g,"\\'")}'`,
-      `date = '${dateVal}'`,
-      `tags = ${JSON.stringify(tags)}`,
-      `categories = [\"${category}\"]`,
-      (lat !== null ? `latitude = ${lat}` : ''),
-      (lng !== null ? `longitude = ${lng}` : ''),
-      'draft = false',
-      '+++',
-      '',
-    ].filter(Boolean).join('\n');
-
-    const fullContent = frontMatterLines + markdown;
-
-    const payload = {
-      title: title,
-      date: dateVal,
-      tags: tags,
-      categories: [category],
-      latitude: lat,
-      longitude: lng,
-      content: fullContent
-      // 画像はすでに Markdown に data:uri として埋め込まれているため別送しない
-    };
-
-    // POST
     try {
+      // validate
+      const title = document.getElementById('title').value.trim();
+      const category = document.getElementById('category').value;
+      if (!title) { alert('タイトルを入力してください'); return; }
+      if (!category) { alert('カテゴリを選択してください'); return; }
+      if (!idToken) { alert('Googleにログインしてください'); return; }
+
+      // コンテンツ取得
+      let markdown = easymde.value();
+
+      // 緯度経度を取得（null 許容）
+      const latVal = document.getElementById('latitude').value.trim();
+      const lngVal = document.getElementById('longitude').value.trim();
+      const lat = latVal && !isNaN(parseFloat(latVal)) ? parseFloat(latVal) : null;
+      const lng = lngVal && !isNaN(parseFloat(lngVal)) ? parseFloat(lngVal) : null;
+
+      // 緯度経度があれば Google Maps リンクを末尾に追加
+      if (lat !== null && lng !== null) {
+        markdown += `\n\n[Google Maps で開く](https://www.google.com/maps?q=${lat},${lng})\n`;
+      }
+
+      // front matter 用値
+      const datetimeInput = document.getElementById('datetime').value;
+      const toJstIsoLocal = (datetimeStr) => {
+        // datetimeStr: "YYYY-MM-DDTHH:MM"
+        return `${datetimeStr}:00+09:00`;
+      }
+      const dateVal = datetimeInput 
+        ? toJstIsoLocal(datetimeInput)
+        : toJstIsoLocal(toLocalISOString(new Date()));    
+
+      const tagsRaw = document.getElementById('tags').value.trim();
+      const tags = tagsRaw ? tagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+      // TOML front matter を作る（簡易）
+      const frontMatterLines = [
+        '+++',
+        `title = '${title.replace(/'/g,"\\'")}'`,
+        `date = '${dateVal}'`,
+        `tags = ${JSON.stringify(tags)}`,
+        `categories = [\"${category}\"]`,
+        (lat !== null ? `latitude = ${lat}` : ''),
+        (lng !== null ? `longitude = ${lng}` : ''),
+        'draft = false',
+        '+++',
+        '',
+      ].filter(Boolean).join('\n');
+
+      const fullContent = frontMatterLines + markdown;
+
+      const payload = {
+        title: title,
+        date: dateVal,
+        tags: tags,
+        categories: [category],
+        latitude: lat,
+        longitude: lng,
+        content: fullContent
+        // 画像はすでに Markdown に data:uri として埋め込まれているため別送しない
+      };
+
+      // POST
       const res = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + idToken
+          'Authorization': 'Bearer ' + idToken,
+          'User-Agent': 'lifelog-form'
         },
         body: JSON.stringify(payload)
       });
@@ -338,9 +352,13 @@
       document.getElementById('postForm').reset();
       easymde.value('');
       imagesInserted = 0;
+
     } catch (err) {
       console.error(err);
       alert('通信エラーが発生しました');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '投稿する';
     }
   });
   </script>
