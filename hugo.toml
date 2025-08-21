@@ -1,5 +1,5 @@
 baseURL = 'https://jmurabe.github.io/lifelog-blog/'
-languageCode = 'ja-jp'
+defaultContentLanguage = 'ja'
 title = 'murave LifeLog'
 theme = "PaperMod"
 pagination.pagerSize = 5
@@ -8,6 +8,8 @@ pagination.pagerSize = 5
   author = "murave"
   ShowReadingTime = true
   ShowToc = true
+  ShowPostNavLinks = true
+  disableScrollToTop = false
   dateFormat = "2006-01-02(Mon)"
 
 [menu]
@@ -16,9 +18,9 @@ pagination.pagerSize = 5
   url = "/"
   weight = 1
 [[menu.main]]
-  identifier = "archives"
-  name = "Archives"
-  url = "/archives/"
+  identifier = "search"
+  name = "Search"
+  url = "/Search/"
   weight = 5
 [[menu.main]]
   identifier = "categories"
@@ -30,3 +32,11 @@ pagination.pagerSize = 5
   name = "Tags"
   url = "/tags/"
   weight = 20
+[[menu.main]]
+  identifier = "archives"
+  name = "Archives"
+  url = "/archives/"
+  weight = 30
+
+[outputs]
+home = ["HTML", "JSON"]

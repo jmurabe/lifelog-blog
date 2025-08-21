@@ -1,0 +1,60 @@
+/* ===== テーマカラー（薄紫ベース） ===== */
+:root {
+  --theme: #f9f9ff;
+  --entry: #f9f9ff;   /* カード背景 */
+  --code-bg: #f4f4ff;
+  --primary: #0505ff; /* リンク */
+  --secondary: #7070ff;
+  --border: #e0d7f7;
+}
+
+/* ===== first-entry（トップの1件目）カード化 ===== */
+.first-entry {
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--entry);
+  padding: 1.2rem;
+  box-shadow: 0 4px 10px rgba(167, 139, 250, 0.2);
+  transition: transform 0.15s ease;
+}
+.first-entry:hover { transform: translateY(-2px); }
+
+/* ===== 記事本文の見出し（ページタイトルは除外） ===== */
+.post-single .post-content h1,
+.post-single .post-content h2,
+.post-single .post-content h3,
+.post-single .post-content h4,
+.post-single .post-content h5,
+.post-single .post-content h6 {
+  font-weight: 600;
+  margin-top: 1.4em;
+  margin-bottom: 0.6em;
+  border-bottom: 2px solid var(--theme);
+  padding-bottom: 0.2em;
+  color: #000;
+}
+
+/* 文字サイズをやや小さめに（強制反映） */
+.post-single .post-content h1 { font-size: 1.6rem }
+.post-single .post-content h2 { font-size: 1.4rem }
+.post-single .post-content h3 { font-size: 1.2rem }
+.post-single .post-content h4 { font-size: 1.05rem }
+.post-single .post-content h5 { font-size: 0.95rem }
+.post-single .post-content h6 { font-size: 0.9rem }
+
+/* モバイルでさらに少しだけ控えめに */
+@media (max-width: 640px) {
+  .post-single .post-content h1 { font-size: 1.5rem }
+  .post-single .post-content h2 { font-size: 1.3rem }
+  .post-single .post-content h3 { font-size: 1.15rem }
+}
+
+/* ===== TOC（PaperMod は .toc 構造） ===== */
+.toc { font-size: 0.85rem; line-height: 1.4; }
+.toc summary { font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.toc .inner { margin-top: 0.4rem; }
+.toc .inner ul { margin: 0.25rem 0 0.5rem 1.1rem; }
+.toc a { text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+
+/* ===== 全体背景とリンク色（本文の文字色は黒のまま） ===== */
