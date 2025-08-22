@@ -4,10 +4,19 @@ title = 'murave LifeLog'
 theme = "PaperMod"
 pagination.pagerSize = 5
 
+[params.homeInfoParams]
+  Title = "雑記・食事・旅行・トレーニング 📝"
+  Content = "muraveのメモです。BlogというよりはLifeLogかなと。"
+
 [params]
   author = "murave"
+  socialIcons = [
+    { name = 'x', url = 'https://x.com/murave' },
+    { name = 'github', url = 'https://github.com/jmurabe' },
+  ]
   ShowReadingTime = true
   ShowToc = true
+  TocOpen = true
   ShowPostNavLinks = true
   disableScrollToTop = false
   dateFormat = "2006-01-02(Mon)"

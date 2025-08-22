@@ -1,5 +1,4 @@
 {{- define "main" }}
-
 <article class="post-single">
   <header class="post-header">
     {{ partial "breadcrumbs.html" . }}
@@ -64,28 +63,6 @@
   {{ end }} 
   
 <footer class="post-footer">
-  <div class="post-taxonomies" style="display: flex; flex-wrap: wrap; gap: 2rem; margin-top: 1rem;">
-    {{- with .Params.categories }}
-    <div class="post-categories">
-      <strong>Categorie:</strong>
-        {{- range . }}
-        <span><a href="{{ "categories/" | relURL }}{{ . | urlize }}/">{{ . }}</a></span>
-        {{- end }}
-    </div>
-    {{- end }}
-
-    {{- with .Params.tags }}
-    <div class="post-tags">
-      <strong>Tags:</strong>
-      <ul>
-        {{- range . }}
-        <li><a href="{{ "tags/" | relURL }}{{ . | urlize }}/">{{ . }}</a></li>
-        {{- end }}
-      </ul>
-    </div>
-    {{- end }}
-  </div>
-
   {{- if (.Param "ShowPostNavLinks") }}
   {{- partial "post_nav_links.html" . }}
   {{- end }}
@@ -99,5 +76,29 @@
   {{- partial "comments.html" . }}
   {{- end }}
 </article>
+
+<!-- 画像サムネイルクリック時にオーバーレイ表示させる -->
+<div id="image-overlay">
+  <img src="" alt="">
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const overlay = document.getElementById("image-overlay");
+  const overlayImg = overlay.querySelector("img");
+
+  document.querySelectorAll(".post-content img").forEach(img => {
+    img.addEventListener("click", () => {
+      overlayImg.src = img.src;
+      overlay.style.display = "flex";
+    });
+  });
+
+  overlay.addEventListener("click", () => {
+    overlay.style.display = "none";
+    overlayImg.src = "";
+  });
+});
+</script>
 
 {{- end }}{{/* end main */}}
