@@ -289,9 +289,11 @@
       // front matter 用値
       const datetimeInput = document.getElementById('datetime').value;
       const toJstIsoLocal = (datetimeStr) => {
-        // datetimeStr: "YYYY-MM-DDTHH:MM"
-        return `${datetimeStr}:00+09:00`;
-      }
+        // "YYYY-MM-DDTHH:MM" または "YYYY-MM-DDTHH:MM:SS" に対応
+        const trimmed = datetimeStr.length > 16 ? datetimeStr.slice(0,16) : datetimeStr;
+        return `${trimmed}:00+09:00`;
+      };
+      
       const dateVal = datetimeInput 
         ? toJstIsoLocal(datetimeInput)
         : toJstIsoLocal(toLocalISOString(new Date()));    
