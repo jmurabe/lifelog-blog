@@ -129,3 +129,18 @@
   border-radius: 8px;
   box-shadow: 0 0 20px rgba(0,0,0,0.5);
 }
+
+/* ===== トップページの記事リスト内サムネイル群 ===== */
+.entry-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.entry-thumbnails img {
+  max-height: 80px;   /* サムネイルの高さを揃える */
+  width: auto;
+  border-radius: 4px;
+  object-fit: cover;
+}

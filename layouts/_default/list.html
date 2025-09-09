@@ -84,6 +84,19 @@
     <p>{{ .Summary | plainify | htmlUnescape }}{{ if .Truncated }}...{{ end }}</p>
   </div>
   {{- end }}
+
+  {{/* 本文から <img ... src="..."> をすべて拾う */}}
+  {{ $imgs := findRE `(?s)<img[^>]+src=["']([^"']+)["'][^>]*>` .Content }}
+  {{ if $imgs }}
+    <div class="entry-thumbnails">
+      {{ range first 5 $imgs /* 先頭から5枚まで */ }}
+        {{/* src だけを抜き出し → safeURL でマーク */}}
+        {{ $src := (replaceRE `(?s).*src=["']([^"']+)["'].*` `$1` .) | safeURL }}
+        <img src="{{ $src }}" alt="thumb" loading="lazy" decoding="async">
+      {{ end }}
+    </div>
+  {{ end }}
+
   {{- if not (.Param "hideMeta") }}
   <footer class="entry-footer">
     {{- partial "post_meta.html" . -}}
