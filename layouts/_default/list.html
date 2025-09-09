@@ -89,7 +89,8 @@
   {{ $imgs := findRE `(?s)<img[^>]+src=["']([^"']+)["'][^>]*>` .Content }}
   {{ if $imgs }}
     <div class="entry-thumbnails">
-      {{ range first 5 $imgs /* 先頭から5枚まで */ }}
+      {{/* 先頭から5枚まで */}}  
+      {{ range first 5 $imgs }}
         {{/* src だけを抜き出し → safeURL でマーク */}}
         {{ $src := (replaceRE `(?s).*src=["']([^"']+)["'].*` `$1` .) | safeURL }}
         <img src="{{ $src }}" alt="thumb" loading="lazy" decoding="async">
