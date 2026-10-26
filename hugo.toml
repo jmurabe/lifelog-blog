@@ -4,6 +4,9 @@ title = 'murave LifeLog'
 theme = "PaperMod"
 pagination.pagerSize = 5
 
+# RSSを無効化
+disableKinds = ["RSS"]
+
 [params.homeInfoParams]
   Title = "雑記・食事・フィットネス 📝"
   Content = "muraveのメモです。BlogというよりはLifeLogかなと。"
